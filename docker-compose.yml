@@ -1,0 +1,69 @@
+version: "2"
+
+services:
+  jenkins:
+    image: jenkins:2.7.2
+    ports:
+      - "8081:8080"
+      - "50000:50000"
+    networks:
+      - sonarnet
+    volumes:
+      - jenkins_home:/var/jenkins_home
+
+  jenkins_slave1:
+    image: evarga/jenkins-slave
+    networks:
+      - sonarnet
+  
+  jenkins_slave2:
+    image: evarga/jenkins-slave
+    networks:
+      - sonarnet
+
+  jenkins_msbuild_slave1:
+    build:
+      context: .
+      dockerfile: msbuild_jenkins_slave.Dockerfile
+    image: densom/msbuild_jenkins
+    networks:
+      - sonarnet
+
+  sonarqube:
+    image: sonarqube:6.0
+    ports:
+      - "9000:9000"
+    networks:
+      - sonarnet
+    environment:
+      - SONARQUBE_JDBC_URL=jdbc:postgresql://db:5432/sonar
+    volumes:
+      - sonarqube_conf:/opt/sonarqube/conf
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_bundled_plugins:/opt/sonarqube/lib/bundled-plugins
+
+  db:
+    image: postgres:9.5.4
+    networks:
+      - sonarnet
+    environment:
+      - POSTGRES_USER=sonar
+      - POSTGRES_PASSWORD=sonar
+    volumes:
+      - postgresql:/var/lib/postgresql
+      # This needs explicit mapping due to https://github.com/docker-library/postgres/blob/4e48e3228a30763913ece952c611e5e9b95c8759/Dockerfile.template#L52
+      - postgresql_data:/var/lib/postgresql/data
+
+networks:
+  sonarnet:
+    driver: bridge
+
+volumes:
+  sonarqube_conf:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_bundled_plugins:
+  postgresql:
+  postgresql_data:
+  jenkins_home:
